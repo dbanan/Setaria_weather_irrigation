@@ -21,6 +21,7 @@ save.image("Setaria_weather_irrigation.Rdata")
 load("Setaria_weather_irrigation.Rdata")
 
 ######IRRIGATION RECORDS#######
+#2015
 irr_15DR<-read.csv("/rsync/box/Setaria/2018 May data meeting/weather and timelines/Setaria_2015_irrigation.csv", header=T, stringsAsFactors=FALSE)
 
 #change NA per.awning to 0 
@@ -34,6 +35,12 @@ irr_15DR$applied_mm<-irr_15DR$applied_cm*10
 #calendar column 
 irr_15DR$calendar<-as.Date(irr_15DR$date)
 
+#2013
+irr_13DR_truck<-read.csv("/de/github/dbanan/auth/Setaria_weather_irrigation/data/Setaria_2013_irrigation_truck.csv", header=T, stringsAsFactors=FALSE)
+irr_13DR_drip<-read.csv("/de/github/dbanan/auth/Setaria_weather_irrigation/data/Setaria_2013_irrigation_drip.csv", header=T, stringsAsFactors=FALSE)
+
+#2014
+#irrigation data is spotty...due to flooding events and treatment reassignments? 
 
 
 #######ISWS data##########
@@ -69,6 +76,7 @@ isws3$ppet_amb<-isws3$precip_mm-isws3$pot_evapot_mm
 
 
 ######JOIN ISWS AND IRRIGATION#####
+#2015
 #trim down to 2015 field season 
 event_15DR<-data.frame(day=as.Date(c("2015-07-06", "2015-07-15", "2015-08-28", "2015-09-23")), 
                        DOY=c(187, 196, 240, 266),
