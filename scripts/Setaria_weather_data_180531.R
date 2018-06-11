@@ -15,7 +15,6 @@ library(ggplot2)
 library(reshape2)
 
 
-
 setwd("/rsync/box/Setaria/2018 May data meeting/weather and timelines")
 save.image("Setaria_weather_irrigation.Rdata") 
 load("Setaria_weather_irrigation.Rdata")
@@ -38,6 +37,10 @@ irr_15DR$calendar<-as.Date(irr_15DR$date)
 #2013
 irr_13DR_truck<-read.csv("/de/github/dbanan/auth/Setaria_weather_irrigation/data/Setaria_2013_irrigation_truck.csv", header=T, stringsAsFactors=FALSE)
 irr_13DR_drip<-read.csv("/de/github/dbanan/auth/Setaria_weather_irrigation/data/Setaria_2013_irrigation_drip.csv", header=T, stringsAsFactors=FALSE)
+
+#average truck waterings to day rather than awning 
+#combine with drip irrigation 
+#convert to rainfall millimeters 
 
 #2014
 #irrigation data is spotty...due to flooding events and treatment reassignments? 
