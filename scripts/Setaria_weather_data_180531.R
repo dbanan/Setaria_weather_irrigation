@@ -16,11 +16,43 @@
 library(ggplot2)
 library(reshape2)
 library(plyr)
+library(gridExtra)
+library(grid)
+
 
 setwd("/de/github/dbanan/auth/Setaria_weather_irrigation")
 
 save.image("./scripts/Setaria_weather_irrigation.Rdata") 
 load("./scripts/Setaria_weather_irrigation.Rdata")
+
+######EXPERIMENT EVENTS########
+event_13DN<-data.frame(day=as.Date(c("2013-05-03", "2013-05-14", "2013-07-29", "2013-08-13")), 
+                       DOY=c(123, 134, 210, 225),
+                       event=c("DN sowing", "DN transplanting", "DN harvest start", "DN harvest end"))
+
+event_13DR<-data.frame(day=as.Date(c("2013-07-07", "2013-07-16", "2013-10-07", "2013-10-31")), 
+                       DOY=c(188, 197, 280, 304),
+                       event=c("DR sowing", "DR transplanting", "DR harvest start", "DR harvest end"))
+
+event_2013<-rbind(event_13DN, event_13DR)
+
+event_14DR<-data.frame(day=as.Date(c("2014-06-08", "2014-06-17", "2014-08-06", "2014-08-25")), 
+                       DOY=c(159, 168, 218, 237),
+                       event=c("DR sowing", "DR transplanting", "DR harvest start", "DR harvest end"))
+
+event_14DN<-data.frame(day=as.Date(c("2014-07-17", "2014-07-24", "2014-09-22", "2014-10-05")), 
+                       DOY=c(198, 205, 265, 278), 
+                       event=c("DN sowing", "DN transplanting", "DN harvest start", "DN harvest end"))
+
+event_2014<-rbind(event_14DR, event_14DN)
+
+event_15DR<-data.frame(day=as.Date(c("2015-07-06", "2015-07-15", "2015-08-28", "2015-09-23")), 
+                       DOY=c(187, 196, 240, 266),
+                       event=c("DR sowing", "DR transplanting", "DR harvest start", "DR harvest end"))
+
+event_16DR<-data.frame(day=as.Date(c("2016-06-11", "2016-06-21", "2016-07-29", "2016-08-24")), 
+                       event=c("DR sowing", "DR transplanting", "DR harvest start", "DR harvest end"))
+
 
 ######IRRIGATION RECORDS#######
 #2015
@@ -152,8 +184,17 @@ lines(isws_15DR1$calendar, isws_15DR1$running_amb, col="grey")
 lines(isws_15DR1$calendar, isws_15DR1$running_wet, col="blue")
 lines(isws_15DR1$calendar, isws_15DR1$running_dry, col="red")
 
+PPET_15<-ggplot(data=isws_15DR1)+
+  geom_line(aes(x=calendar, y=running_amb), color="grey")+
+  geom_line(aes(x=calendar, y=running_wet), color="blue")+
+  geom_line(aes(x=calendar, y=running_dry), color="red")+
+  geom_hline(yintercept=0, linetype=3)+
+  geom_vline(data=event_15DR, aes(xintercept=as.numeric(day)))+
+  geom_text(data=event_15DR, mapping=aes(x=day, y=0.01, label=event), angle=90, vjust=-0.4, hjust=0, size=3)+
+  theme_classic()+
+  scale_y_continuous(name="2015 P-PET mm", expand=c(0,0), limits=c(-10,30))
 
-
+PPET_15
 
 
 #2013
@@ -194,6 +235,17 @@ lines(isws_131$calendar, isws_131$running_wet, col="blue")
 lines(isws_131$calendar, isws_131$running_dry, col="red")
 
 
+PPET_13<-ggplot(data=isws_131)+
+  geom_line(aes(x=calendar, y=running_amb), color="grey")+
+  geom_line(aes(x=calendar, y=running_wet), color="blue")+
+  geom_line(aes(x=calendar, y=running_dry), color="red")+
+  geom_hline(yintercept=0, linetype=3)+
+  geom_vline(data=event_2013, aes(xintercept=as.numeric(day)))+
+  geom_text(data=event_2013, mapping=aes(x=day, y=0.01, label=event), angle=90, vjust=-0.4, hjust=0, size=3)+
+  theme_classic()+
+  scale_y_continuous(name="2013 P-PET mm", expand=c(0,0), limits=c(-10,70))
+
+PPET_13
 
 #2014
 #will just have ambient PPET, still tracking down irrigation notes from this season 
@@ -209,7 +261,23 @@ plot(isws_141$calendar, isws_141$running_amb, type="n")
 lines(isws_141$calendar, isws_141$running_amb, col="grey")
 
 
+PPET_14<-ggplot(data=isws_141)+
+  geom_line(aes(x=calendar, y=running_amb), color="grey")+
+  geom_hline(yintercept=0, linetype=3)+
+  geom_vline(data=event_2014, aes(xintercept=as.numeric(day)))+
+  geom_text(data=event_2014, mapping=aes(x=day, y=0.01, label=event), angle=90, vjust=-0.4, hjust=0, size=3)+
+  theme_classic()+
+  scale_y_continuous(name="2014 P-PET mm", expand=c(0,0), limits=c(-10,20))
 
+PPET_14
+
+
+
+######OUTPUT RESULTS######
+
+png(file="./results/PPET_RIL.png", width=900, height=550)
+grid.draw(rbind(ggplotGrob(PPET_15), ggplotGrob(PPET_14), ggplotGrob(PPET_13), size="last"))
+dev.off()
 
 
 
