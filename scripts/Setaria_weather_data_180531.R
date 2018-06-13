@@ -13,6 +13,7 @@
 
 library(ggplot2)
 library(reshape2)
+library(plyr)
 
 
 setwd("/rsync/box/Setaria/2018 May data meeting/weather and timelines")
@@ -38,12 +39,38 @@ irr_15DR$calendar<-as.Date(irr_15DR$date)
 irr_13DR_truck<-read.csv("/de/github/dbanan/auth/Setaria_weather_irrigation/data/Setaria_2013_irrigation_truck.csv", header=T, stringsAsFactors=FALSE)
 irr_13DR_drip<-read.csv("/de/github/dbanan/auth/Setaria_weather_irrigation/data/Setaria_2013_irrigation_drip.csv", header=T, stringsAsFactors=FALSE)
 
+#format truck irrigation  
+#break date strings into useable information
+irr_13DR_truck$year<-2000+as.numeric(substr(irr_13DR_truck$date, 1,2))
+irr_13DR_truck$month<-substr(irr_13DR_truck$date, 3,4)
+irr_13DR_truck$day<-substr(irr_13DR_truck$date, 5,6)
+#and stitch back together into date format 
+irr_13DR_truck$calendar<-as.Date(paste(irr_13DR_truck$year, irr_13DR_truck$month, irr_13DR_truck$day, sep="-"))
 #average truck waterings to day rather than awning 
-#combine with drip irrigation 
-#convert to rainfall millimeters 
+irr_13DR_truck1<-ddply(irr_13DR_truck, c("calendar"), summarise, difference=mean(difference.gal))
+colnames(irr_13DR_truck1)[2]<-"applied_gal"
 
+#format drip irrigation
+irr_13DR_drip$year<-2000+as.numeric(substr(irr_13DR_drip$date, 1,2))
+irr_13DR_drip$month<-substr(irr_13DR_drip$date, 3,4)
+irr_13DR_drip$day<-substr(irr_13DR_drip$date, 5,6)
+irr_13DR_drip$calendar<-as.Date(paste(irr_13DR_drip$year, irr_13DR_drip$month, irr_13DR_drip$day, sep="-"))
+irr_13DR_drip1<-irr_13DR_drip[,c(6,10)]
+colnames(irr_13DR_drip1)[1]<-"applied_gal"
+
+#combine truck and drip irrigation 
+irr_13DR<-rbind(irr_13DR_truck1, irr_13DR_drip1)
+
+#convert to rainfall centimeters and millimeters 
+#3785.41 cubic cm in a gallon, 89250 cm^2 is irrigated footprint 2015 !!!need to double check the irrigated footprint in 2013, we really stuffed the awnings that year
+irr_13DR$applied_cm<-(irr_13DR$applied_gal*3785.41)/89250
+irr_13DR$applied_mm<-irr_13DR$applied_cm*10
+
+  
+  
 #2014
 #irrigation data is spotty...due to flooding events and treatment reassignments? 
+#chase this down later 
 
 
 #######ISWS data##########
@@ -99,28 +126,24 @@ isws_15DR$applied_mm[is.na(isws_15DR$applied_mm)]<-0
 isws_15DR$ppet_wet<-isws_15DR$applied_mm-isws_15DR$pot_evapot_mm
 isws_15DR$ppet_dry<-0-isws_15DR$pot_evapot_mm
 
-
-
-
+#raw scatter
 plot(isws_15DR$calendar, isws_15DR$ppet_amb)
 plot(isws_15DR$calendar, isws_15DR$ppet_wet)
 plot(isws_15DR$calendar, isws_15DR$ppet_dry)
-
-
 
 #now try 7 day running average 
 #try some running averages stuff 
 
 f7<-rep(1/7, 7)
 
-y_amb<-as.data.frame(filter(isws_15DR$ppet_amb, f7, sides=2))
-y_wet<-as.data.frame(filter(isws_15DR$ppet_wet, f7, sides=2))
-y_dry<-as.data.frame(filter(isws_15DR$ppet_dry, f7, sides=2))
+y_amb15<-as.data.frame(filter(isws_15DR$ppet_amb, f7, sides=2))
+y_wet15<-as.data.frame(filter(isws_15DR$ppet_wet, f7, sides=2))
+y_dry15<-as.data.frame(filter(isws_15DR$ppet_dry, f7, sides=2))
 
-y_all<-cbind(y_amb, y_wet, y_dry)
-colnames(y_all)<-c("running_amb","running_wet","running_dry")
+y_all15<-cbind(y_amb15, y_wet15, y_dry15)
+colnames(y_all15)<-c("running_amb","running_wet","running_dry")
 
-isws_15DR1<-cbind(isws_15DR, y_all)
+isws_15DR1<-cbind(isws_15DR, y_all15)
 
 plot(isws_15DR1$calendar, isws_15DR1$running_wet, type="n")
 lines(isws_15DR1$calendar, isws_15DR1$running_amb, col="grey")
@@ -131,6 +154,57 @@ lines(isws_15DR1$calendar, isws_15DR1$running_dry, col="red")
 
 
 
+#2013
+#trim to 2013 experiment timeframe (both experiments)
+isws_13<-subset(isws3, calendar>="2013-05-03" & calendar<="2013-10-31")
+#join 2013 isws and irrigation data 
+isws_13<-merge(isws_13, irr_13DR, by=c("calendar"), all=TRUE)
+
+#convert NA to 0 for applied_cm and applied_mm
+isws_13$applied_cm[isws_13$calendar>"2013-07-07" & is.na(isws_13$applied_cm)]<-0
+isws_13$applied_mm[isws_13$calendar>"2013-07-07" & is.na(isws_13$applied_mm)]<-0
+
+#calculate awning treatment P-PET (mm)
+isws_13$ppet_wet<-isws_13$applied_mm-isws_13$pot_evapot_mm
+isws_13$ppet_dry<-0-isws_13$pot_evapot_mm
+
+for (i in 1:nrow(isws_13)){
+  if (isws_13$calendar[i] > "2013-07-07"){
+  isws_13$ppet_dry[i]<-0-isws_13$pot_evapot_mm[i]
+  }
+  else {isws_13$ppet_dry[i]<-NA}
+}
+
+
+#calculate running averages 
+y_amb13<-as.data.frame(filter(isws_13$ppet_amb, f7, sides=2))
+y_wet13<-as.data.frame(filter(isws_13$ppet_wet, f7, sides=2))
+y_dry13<-as.data.frame(filter(isws_13$ppet_dry, f7, sides=2))
+
+y_all13<-cbind(y_amb13, y_wet13, y_dry13)
+colnames(y_all13)<-c("running_amb","running_wet","running_dry")
+
+isws_131<-cbind(isws_13, y_all13)
+
+plot(isws_131$calendar, isws_131$running_wet, type="n")
+lines(isws_131$calendar, isws_131$running_amb, col="grey")
+lines(isws_131$calendar, isws_131$running_wet, col="blue")
+lines(isws_131$calendar, isws_131$running_dry, col="red")
+
+
+
+#2014
+#will just have ambient PPET, still tracking down irrigation notes from this season 
+isws_14<-subset(isws3, calendar>="2014-06-08" & calendar<="2014-10-05")
+
+y_amb14<-as.data.frame(filter(isws_14$ppet_amb, f7, sides=2))
+y_all14<-y_amb14
+colnames(y_all14)<-"running_amb"
+
+isws_141<-cbind(isws_14, y_all14)
+
+plot(isws_141$calendar, isws_141$running_amb, type="n")
+lines(isws_141$calendar, isws_141$running_amb, col="grey")
 
 
 
@@ -145,6 +219,7 @@ lines(isws_15DR1$calendar, isws_15DR1$running_dry, col="red")
 
 
 
+######ARCHIVE######
 
 #join SoyFACE and ISWS data
 big_weather<-merge(isws3, ave24, by=c("calendar"))
