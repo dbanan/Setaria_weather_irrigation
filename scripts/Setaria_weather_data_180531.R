@@ -9,20 +9,22 @@
 #6/10/18 migrate data and script to project 
 #6/10/18 version control 
 
+#6/12/18 relative path from working directory 
+
 
 
 library(ggplot2)
 library(reshape2)
 library(plyr)
 
+setwd("/de/github/dbanan/auth/Setaria_weather_irrigation")
 
-setwd("/rsync/box/Setaria/2018 May data meeting/weather and timelines")
-save.image("Setaria_weather_irrigation.Rdata") 
-load("Setaria_weather_irrigation.Rdata")
+save.image("./scripts/Setaria_weather_irrigation.Rdata") 
+load("./scripts/Setaria_weather_irrigation.Rdata")
 
 ######IRRIGATION RECORDS#######
 #2015
-irr_15DR<-read.csv("/rsync/box/Setaria/2018 May data meeting/weather and timelines/Setaria_2015_irrigation.csv", header=T, stringsAsFactors=FALSE)
+irr_15DR<-read.csv("./data/Setaria_2015_irrigation.csv", header=T, stringsAsFactors=FALSE)
 
 #change NA per.awning to 0 
 irr_15DR$per.awning[is.na(irr_15DR$per.awning)]<-0
@@ -36,8 +38,8 @@ irr_15DR$applied_mm<-irr_15DR$applied_cm*10
 irr_15DR$calendar<-as.Date(irr_15DR$date)
 
 #2013
-irr_13DR_truck<-read.csv("/de/github/dbanan/auth/Setaria_weather_irrigation/data/Setaria_2013_irrigation_truck.csv", header=T, stringsAsFactors=FALSE)
-irr_13DR_drip<-read.csv("/de/github/dbanan/auth/Setaria_weather_irrigation/data/Setaria_2013_irrigation_drip.csv", header=T, stringsAsFactors=FALSE)
+irr_13DR_truck<-read.csv("./data/Setaria_2013_irrigation_truck.csv", header=T, stringsAsFactors=FALSE)
+irr_13DR_drip<-read.csv("./data/Setaria_2013_irrigation_drip.csv", header=T, stringsAsFactors=FALSE)
 
 #format truck irrigation  
 #break date strings into useable information
@@ -74,7 +76,7 @@ irr_13DR$applied_mm<-irr_13DR$applied_cm*10
 
 
 #######ISWS data##########
-isws<-read.table("/rsync/box/Setaria/2018 May data meeting/weather and timelines/ISWS_weather_data/allstations/CMIDAY.txt",header=T,sep="\t", stringsAsFactors=FALSE)
+isws<-read.table("./data/CMIDAY.txt",header=T,sep="\t", stringsAsFactors=FALSE)
 
 #ditch last rows with data metadata and first row with units 
 #keep columns of interest 
