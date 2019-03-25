@@ -55,6 +55,54 @@ event_16DR<-data.frame(day=as.Date(c("2016-06-11", "2016-06-21", "2016-07-29", "
 
 
 ######IRRIGATION RECORDS#######
+#2016
+irr_16DR_raw<-read.csv("./data/DR16_waterLog_combined.csv", header=T, stringsAsFactors=FALSE)
+
+#convert Date to calendar 
+irr_16DR_raw$calendar<-as.Date(irr_16DR_raw$calendar)
+
+#assign to treatment 
+
+#calculate average treatment applied on each date 
+irr_16DR_l<-melt(irr_16DR_raw, id.vars=c("calendar"), 
+                 measure.vars=c("Awning.1","Awning.2","Awning.3","Awning.4",
+                                "Awning.5","Awning.6","Awning.7","Awning.8",
+                                "Awning.9","Awning.10","Awning.11","Awning.12",
+                                "Awning.13","Awning.14","Awning.15","Awning.16"),
+                 variable.name="awning",
+                 value.name="applied_gallons")
+irr_16DR_l$treatment[irr_16DR_l$awning=="Awning.1"]<-"WW"
+irr_16DR_l$treatment[irr_16DR_l$awning=="Awning.2"]<-"WW"
+irr_16DR_l$treatment[irr_16DR_l$awning=="Awning.3"]<-"WW"
+irr_16DR_l$treatment[irr_16DR_l$awning=="Awning.4"]<-"WW"
+irr_16DR_l$treatment[irr_16DR_l$awning=="Awning.5"]<-"WD"
+irr_16DR_l$treatment[irr_16DR_l$awning=="Awning.6"]<-"WD"
+irr_16DR_l$treatment[irr_16DR_l$awning=="Awning.7"]<-"WD"
+irr_16DR_l$treatment[irr_16DR_l$awning=="Awning.8"]<-"WD"
+irr_16DR_l$treatment[irr_16DR_l$awning=="Awning.9"]<-"WD"
+irr_16DR_l$treatment[irr_16DR_l$awning=="Awning.10"]<-"WD"
+irr_16DR_l$treatment[irr_16DR_l$awning=="Awning.11"]<-"WD"
+irr_16DR_l$treatment[irr_16DR_l$awning=="Awning.12"]<-"WD"
+irr_16DR_l$treatment[irr_16DR_l$awning=="Awning.13"]<-"WW"
+irr_16DR_l$treatment[irr_16DR_l$awning=="Awning.14"]<-"WW"
+irr_16DR_l$treatment[irr_16DR_l$awning=="Awning.15"]<-"WW"
+irr_16DR_l$treatment[irr_16DR_l$awning=="Awning.16"]<-"WW"
+
+irr_16DR_m<-ddply(irr_16DR_l, c("calendar", "treatment"), summarize, applied_gal=mean(applied_gallons))
+
+#convert gallons to rainfall centimeters and millimeters 
+irr_16DR_m$applied_cm<-(irr_16DR_m$applied_gal*3785.41)/89250
+irr_16DR_m$applied_mm<-irr_16DR_m$applied_cm*10
+
+#applied_mm wide by treatment 
+irr_16DR_w<-dcast(irr_16DR_m, calendar~treatment, value.var="applied_mm")
+colnames(irr_16DR_w)<-c("calendar","WD_applied_mm","WW_applied_mm")
+
+#ready to merge with other environmental data
+irr_16DR<-irr_16DR_w
+
+
+
 #2015
 irr_15DR<-read.csv("./data/Setaria_2015_irrigation.csv", header=T, stringsAsFactors=FALSE)
 
@@ -140,6 +188,71 @@ isws3$ppet_amb<-isws3$precip_mm-isws3$pot_evapot_mm
 
 
 ######JOIN ISWS AND IRRIGATION#####
+#2016
+#trim down to 2016 field season (convert all these 2015 dates to 2016)
+event_16DR<-data.frame(day=as.Date(c("2016-06-11", "2016-06-21", "2016-07-29", "2016-08-24")), 
+                       event=c("DR sowing", "DR transplanting", "DR harvest start", "DR harvest end"))
+
+#trim isws to experiment time frame  
+isws_16DR<-subset(isws3, calendar>="2016-06-11" & calendar<="2016-08-24")
+
+#join isws and irrigation data
+isws_16DR<-merge(isws_16DR, irr_16DR, by=c("calendar"), all=TRUE)
+
+#convert NA to 0 for applied_cm and applied_mm
+isws_16DR$WD_applied_mm[is.na(isws_16DR$WD_applied_mm)]<-0
+isws_16DR$WW_applied_mm[is.na(isws_16DR$WW_applied_mm)]<-0
+
+#calculate awning treatment P-PET (mm) 
+isws_16DR$ppet_wet<-isws_16DR$WW_applied_mm-isws_16DR$pot_evapot_mm
+isws_16DR$ppet_dry<-isws_16DR$WD_applied_mm-isws_16DR$pot_evapot_mm
+
+
+#raw scatter
+plot(isws_16DR$calendar, isws_16DR$ppet_amb)
+plot(isws_16DR$calendar, isws_16DR$ppet_wet)
+plot(isws_16DR$calendar, isws_16DR$ppet_dry)
+
+#now try 7 day running average 
+#try some running averages stuff 
+
+f7<-rep(1/7, 7)
+
+y_amb16<-as.data.frame(filter(isws_16DR$ppet_amb, f7, sides=2))
+y_wet16<-as.data.frame(filter(isws_16DR$ppet_wet, f7, sides=2))
+y_dry16<-as.data.frame(filter(isws_16DR$ppet_dry, f7, sides=2))
+
+y_all16<-cbind(y_amb16, y_wet16, y_dry16)
+colnames(y_all16)<-c("running_amb","running_wet","running_dry")
+
+isws_16DR1<-cbind(isws_16DR, y_all16)
+
+plot(isws_16DR1$calendar, isws_16DR1$running_wet, type="n")
+lines(isws_16DR1$calendar, isws_16DR1$running_amb, col="grey")
+lines(isws_16DR1$calendar, isws_16DR1$running_wet, col="blue")
+lines(isws_16DR1$calendar, isws_16DR1$running_dry, col="red")
+
+PPET_16<-ggplot(data=isws_16DR1)+
+  geom_line(aes(x=calendar, y=running_amb), color="grey")+
+  geom_line(aes(x=calendar, y=running_wet), color="blue")+
+  geom_line(aes(x=calendar, y=running_dry), color="red")+
+  geom_hline(yintercept=0, linetype=3)+
+  geom_vline(data=event_16DR, aes(xintercept=as.numeric(day)))+
+  geom_text(data=event_16DR, mapping=aes(x=day, y=0.01, label=event), angle=90, vjust=-0.4, hjust=0, size=3)+
+  theme_classic()+
+  scale_y_continuous(name="2016 P-PET mm", expand=c(0,0), limits=c(-10,30))
+
+PPET_16
+
+
+#export 2016 isws+irrigation data to build results in LR2016DR working environment 
+#from /de/github/dbanan/auth/Setaria_weather_irrigation to /de/github/dbanan/auth/LR2016DR
+#for later: what is the best way to transfer data between projects with different working directories?
+save(isws_16DR1, file="./data/DR16_isws_irr.Rdata")
+
+
+
+
 #2015
 #trim down to 2015 field season 
 event_15DR<-data.frame(day=as.Date(c("2015-07-06", "2015-07-15", "2015-08-28", "2015-09-23")), 
